@@ -1,11 +1,12 @@
-from speechbrain.inference.ASR import EncoderDecoderASR
+from speechbrain.inference.ASR import EncoderDecoderASR, WhisperASR
 import csv
 import random
 import wave
 import pyaudio
+import time
 
 # search parameters
-PUNCTUATION = '''!()-[]{};:'"\, <>./?@#$%^&*_~'''
+PUNCTUATION = '''!()-[]{};:'"\\, <>./?@#$%^&*_~'''
 INVERTED_INDEX = {}
 output_filename = "recorded_audio.wav"
 
@@ -13,7 +14,10 @@ def process_audio():
     asr_model = EncoderDecoderASR.from_hparams(
         source="speechbrain/asr-crdnn-rnnlm-librispeech",
         savedir="pretrained_models/asr-crdnn-rnnlm-librispeech")
+    tim = time.time()
     text = asr_model.transcribe_file(output_filename)
+    tim = time.time() - tim
+    print('Time: {:.5f}'.format(tim))
     print(f'You said: {text}')
     return text
 
@@ -83,7 +87,7 @@ def stt():
 if __name__ == "__main__":
     populate_inverted_index()
 
-    stt()
+    # stt()
     text = process_audio()
     final = process_text(text)
     print(f'Choose one of the following {random.choices(list(final), k=3)}')

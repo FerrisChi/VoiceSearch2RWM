@@ -1,0 +1,7 @@
+services:
+  voice-search:
+    build: ./voice-search-darwin-arm64
+    volumes:
+      - /var/voice-search:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
