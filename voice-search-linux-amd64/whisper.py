@@ -12,13 +12,20 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
+# Only optimze on GPU
+# import torch
+# torch.backends.cudnn.benchmark = True
+# torch.backends.cuda.matmul.allow_tf32 = True
+
 PUNCTUATION = '''!()-[]{};:'"\\, <>./?@#$%^&*_~'''
 INVERTED_INDEX = {}
-DATA_PATH = "/app/data"
-
+DATA_PATH = "/var/voice-search"
 Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper")
 AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper")
 TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers")
+
+AudioModel.eval()
+TextModel.eval()
 
 sio = socketio.Client()
 
@@ -74,26 +81,45 @@ def load_and_process_tags(file_path, model):
             tag_vectors.append(tag_vector)
     
     return inverted_index, tag_texts, np.array(tag_vectors)
-
-def find_top_k_videos(sentence, inverted_index, tag_vectors, tag_texts, model, k=3):
     
+def find_and_rank_top_videos(sentence, inverted_index, tag_vectors, tag_texts, model, similarity_threshold=0.3, max_videos=10):
     tim = time.time()
-
     sentence_vector = model.encode(sentence)
     
     similarities = cosine_similarity([sentence_vector], tag_vectors).flatten()
     
-    top_k_indices = similarities.argsort()[-k:][::-1]
+    # Sort indices by similarity in descending order
+    sorted_indices = similarities.argsort()[::-1]
     
-    top_k_tags = [tag_texts[index] for index in top_k_indices]
-    top_k_video_ids = list(set([video_id for tag in top_k_tags for video_id in inverted_index[tag]]))
+    top_tags = []
+    video_scores = {}
+    
+    for index in sorted_indices:
+        if similarities[index] < similarity_threshold:
+            break
+        
+        tag = tag_texts[index]
+        tag_similarity = similarities[index]
+        top_tags.append(tag)
+        
+        for video_id in inverted_index[tag]:
+            if video_id not in video_scores:
+                video_scores[video_id] = 0
+            video_scores[video_id] += tag_similarity
+        
+        if len(video_scores) >= max_videos * 2:  # Collect more than needed for better ranking
+            break
+    
+    # Sort videos by their scores
+    ranked_video_ids = [video_id for video_id, _ in sorted(video_scores.items(), key=lambda x: x[1], reverse=True)[:max_videos]]
     
     tim = time.time() - tim
     print('Text Time: {:.5f}'.format(tim))
-    print("Top k relevant tags:", top_k_tags)
-    # print("Top k relevant video IDs:", top_k_video_ids)
+    print("Top relevant tags:", top_tags)
+    # print("Top videos:", ranked_video_ids)
     
-    return top_k_video_ids
+    return ranked_video_ids
+
 
 @sio.event
 def connect():
@@ -117,8 +143,7 @@ def handle_voice_search(data):
 
     text = process_audio(file_path)
 
-    k = 3 if data['num_tags'] is None else int(data['num_tags'])
-    top_k_video_ids = find_top_k_videos(text, inverted_index, tag_vectors, tag_texts, TextModel, k)
+    top_k_video_ids = find_and_rank_top_videos(text, inverted_index, tag_vectors, tag_texts, TextModel)
 
     sio.emit('voice search result', {'chatroom': 'voice search', 'result': top_k_video_ids, 'transcription': text})
 
@@ -133,5 +158,5 @@ if __name__ == "__main__":
     # text = process_audio(test_audio_path)
     # top_k_video_ids = find_top_k_videos(text, inverted_index, tag_vectors, tag_texts, TextModel, 5)
 
-    sio.connect('http://host.docker.internal:3000')
+    sio.connect('http://127.0.0.1:3000')
     sio.wait()
