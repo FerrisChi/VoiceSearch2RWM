@@ -1,24 +1,31 @@
 # VoiceSearch2RWM
 
-## Run with Venv (python 3.8)
+## Run with Venv 
 
-In `voicer-search-linux-amd64\`
+* python 3.12 is needed in MacOS and python 3.8 in Linux
 
-1. Install Linux packages
-   * `apt-get update`
-   * `apt-get upgrade`
-   * `apt-get install portaudio19-dev ffmpeg libsndfile1`
+1. Make sure `portaudio ffmpeg libsndfile` are installed in the system.
+   * In linux:
+     * `apt-get update`
+     * `apt-get upgrade`
+     * `apt-get install portaudio19-dev ffmpeg libsndfile1`
+   * In MacOS:
+     * `brew update && brew upgrade && brew cleanup`
+     * `brew install portaudio ffmpeg libsndfile`
 
-2. Install Python packages
-   
-   `pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub`
-   
-   or
-   `pip install -r requirements.txt`.
+2. Creat a virtual environment
+   * `python -m venv vsenv`
+   * `source vsenv/bin/activate`
 
-3. Run voice search service
+3. Install Python packages
+   * `pip install -r requirements-<amd64|arm64>.txt`
+   * If failed, try install them manually and freeze version for later use.
+     * `pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub`
+     * `pip freeze > requirements.txt`
+
+4. Run voice search service
    * Make sure the centivizerWeb server is up.
-   * `python whisper.py`
+   * `python voicesearch.py`
 
 
 ## Run with Docker
@@ -47,7 +54,7 @@ In `voicer-search-linux-amd64\`
 1. Install Anaconda, Miniconda or Miniforge.
 2. Create an environment with python version `3.12`.
 3. Install packages and libraries needed.
-   1. Make sure `portaudio ffmpeg libsndfile` are installed in the system.
+   
    2. Install python packages using pip or pip3.
         ```
         pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub 
