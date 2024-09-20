@@ -8,6 +8,10 @@ import socketio
 import string
 import torch
 import argparse
+from threading import Thread
+import pyaudio
+import openwakeword
+import numpy as np
 
 from sentence_transformers import SentenceTransformer, util
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
@@ -33,6 +37,16 @@ sio = socketio.Client()
 INVERTED_INDEX = {}
 TAG_TEXTS = []
 TAG_TENSOR = None
+
+oww = openwakeword.Model(
+    wakeword_models=["alexa"]
+)
+
+# Audio stream parameters
+CHUNK = 1600
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000
 
 def load_and_process_tags(file_path):
     with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -135,7 +149,19 @@ def handle_voice_search(data):
 
     top_k_video_ids = find_and_rank_top_videos(text)
 
-    sio.emit('voice search result', {'chatroom': 'voice search', 'result': top_k_video_ids, 'transcription': text})
+    sio.emit('voice search result', {'chatroom': 'voice search', 'result': top_k_video_ids, 'transcription': text, 'fileName': file_name})
+
+def process_audio_stream():
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+
+    while True:
+        audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
+        prediction = oww.predict(audio_chunk)
+        
+        if prediction[0] > 0.5:  # Adjust threshold as needed
+            print("triggered!!!!")
+            # sio.emit('wake_word_detected')
 
 if __name__ == "__main__":
     
@@ -156,4 +182,10 @@ if __name__ == "__main__":
     load_and_process_tags(csv_file_path)
 
     sio.connect(args.url)
+    sio.wait()
+    
+    # Start audio processing in a separate thread
+    audio_thread = Thread(target=process_audio_stream)
+    audio_thread.start()
+
     sio.wait()

@@ -20,7 +20,7 @@
 3. Install Python packages
    * `pip install -r requirements-<amd64|arm64>.txt`
    * If failed, try install them manually and freeze version for later use.
-     * `pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub`
+     * `pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub openwakeword`
      * `pip freeze > requirements.txt`
 
 4. Run voice search service
