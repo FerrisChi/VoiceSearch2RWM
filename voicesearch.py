@@ -40,6 +40,8 @@ INVERTED_INDEX = {}
 TAG_TEXTS = []
 TAG_TENSOR = None
 
+openwakeword.utils.download_models(['alexa'])
+
 oww = openwakeword.Model(
     wakeword_models=["alexa"]
 )
@@ -196,8 +198,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Voice Search Server')
     parser.add_argument('--url', type=str, default="http://127.0.0.1:3000", help='URL of the 2RaceWithMe server')
-    parser.add_argument('--data_path', type=str, default="/Users/fchi/Code/VoiceSearch2RWM/data", help='Path to the inverted index folder')
-    parser.add_argument('--tmp_path', type=str, default="/Users/fchi/Code/centivizerWeb/tmp/voice-search", help='Path to the temporary audio folder, can be same as data_path')
+    parser.add_argument('--data_path', type=str, default="/home/odyssey/developer/VoiceSearch2RWM/data", help='Path to the inverted index folder')
+    parser.add_argument('--tmp_path', type=str, default="/home/odyssey/developer/centivizerWeb/tmp/voice-search", help='Path to the temporary audio folder, can be same as data_path')
     args = parser.parse_args()
 
     # inverted index path

@@ -20,15 +20,18 @@
 3. Install Python packages
    * `pip install -r requirements-<amd64|arm64>.txt`
    * If failed, try install them manually and freeze version for later use.
-     * `pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub openwakeword`
+     * `pip install networkx==3.0 torch torchaudio --index-url=https://download.pytorch.org/whl/cpu`
+     * `pip install "transformers[torch]" sentence-transformers "python-socketio<5" soundfile pydub openwakeword pyaudio`
      * `pip freeze > requirements.txt`
 
 4. Run voice search service
-   * Make sure the centivizerWeb server is up.
-   * `python voicesearch.py`
+   * Make sure the centivizerWeb is checked to `jjc_voicesearch` branch and server is up.
+   * `python voicesearch.py --url http://127.0.0.1:3000 --data_path /home/odyssey/developer/VoiceSearch2RWM/data --tmp_path /home/odyssey/developer/centivizerWeb/tmp/voice-search`
+   * Trigger the voice search by saying "Alexa".
 
 
-## Run with Docker
+
+## Run with Docker (Deprecated)
 
 ### Installation
 
@@ -48,17 +51,3 @@
    `docker login`
 3. Push the docker image
    `docker push <your_dockerhub_username>/voicesearch2rwm:<tag>`
-
-## Run with Conda
-
-1. Install Anaconda, Miniconda or Miniforge.
-2. Create an environment with python version `3.12`.
-3. Install packages and libraries needed.
-   
-   2. Install python packages using pip or pip3.
-        ```
-        pip install transformers sentence-transformers torch torchvision torchaudio "python-socketio<5" soundfile pydub 
-        ```
-4. Modify the `DATA_PATH` in `whisper.py` to be same with `audioPath` in `centivizerWeb/app.js`.
-5. Run the voice search service
-   `python voice-search-<your system and architecture>/whisper.py`.
