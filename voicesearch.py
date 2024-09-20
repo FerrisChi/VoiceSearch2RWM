@@ -2,13 +2,15 @@ import csv
 import time
 import os
 import io
+import sys
+import signal
 from pydub import AudioSegment
 import soundfile as sf
 import socketio
 import string
 import torch
 import argparse
-from threading import Thread
+from threading import Thread, Event
 import pyaudio
 import openwakeword
 import numpy as np
@@ -47,6 +49,8 @@ CHUNK = 1600
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
+
+stop_event = Event()
 
 def load_and_process_tags(file_path):
     with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -155,13 +159,25 @@ def process_audio_stream():
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
-    while True:
-        audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
-        prediction = oww.predict(audio_chunk)
-        
-        if prediction[0] > 0.5:  # Adjust threshold as needed
-            print("triggered!!!!")
-            # sio.emit('wake_word_detected')
+    try:
+        while not stop_event.is_set():
+            audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
+            prediction = oww.predict(audio_chunk)
+            
+            if prediction[0] > 0.5:  # Adjust threshold as needed
+                print("triggered!!!!")
+                # sio.emit('wake_word_detected')
+    finally:
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+# Signal handler for graceful shutdown
+def signal_handler(signum, frame):
+    print("Interrupt received, shutting down...")
+    stop_event.set()
+    sio.disconnect()
+    sys.exit(0)
 
 if __name__ == "__main__":
     
@@ -181,11 +197,17 @@ if __name__ == "__main__":
     csv_file_path = os.path.join(DATA_PATH, 'inverted-index.csv')
     load_and_process_tags(csv_file_path)
 
+    signal.signal(signal.SIGINT, signal_handler)
+
     sio.connect(args.url)
-    sio.wait()
     
     # Start audio processing in a separate thread
     audio_thread = Thread(target=process_audio_stream)
     audio_thread.start()
 
-    sio.wait()
+    try:
+        sio.wait()
+    finally:
+        stop_event.set()
+        audio_thread.join()
+        print("Cleanup complete")
