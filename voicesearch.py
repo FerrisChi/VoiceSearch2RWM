@@ -176,7 +176,7 @@ def process_audio_stream():
                 
                 if prediction['alexa'] > 0.5 and time.time() - last_wake_time > wake_cooldown:  # Adjust threshold as needed
                     print("triggered!!!!")
-                    sio.emit('wake_word_detected')
+                    sio.emit('voice search start', {'chatroom': 'voice search'})
                     last_wake_time = time.time()
             else:
                 time.sleep(0.1)
