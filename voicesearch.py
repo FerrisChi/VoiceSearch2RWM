@@ -165,6 +165,8 @@ def handle_voice_search(data):
 def process_audio_stream():
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    last_wake_time = time.time()
+    wake_cooldown = 5
 
     try:
         while not stop_event.is_set():
@@ -172,10 +174,10 @@ def process_audio_stream():
                 audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
                 prediction = oww.predict(audio_chunk)
                 
-                if prediction['alexa'] > 0.5:  # Adjust threshold as needed
+                if prediction['alexa'] > 0.5 and time.time() - last_wake_time > wake_cooldown:  # Adjust threshold as needed
                     print("triggered!!!!")
                     sio.emit('wake_word_detected')
-                    time.sleep(3)
+                    last_wake_time = time.time()
             else:
                 time.sleep(0.1)
     finally:
