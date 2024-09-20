@@ -51,6 +51,7 @@ CHANNELS = 1
 RATE = 16000
 
 stop_event = Event()
+pause_wake_event = Event()
 
 def load_and_process_tags(file_path):
     with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -145,6 +146,9 @@ def handle_test(data):
 
 @sio.on('voice search process')
 def handle_voice_search(data):
+    # hold stream processing
+    pause_wake_event.set()
+
     print('Voice search process received', data)
     file_name = data['fileName']
     file_path = os.path.join(TMP_PATH, file_name)
@@ -155,18 +159,25 @@ def handle_voice_search(data):
 
     sio.emit('voice search result', {'chatroom': 'voice search', 'result': top_k_video_ids, 'transcription': text, 'fileName': file_name})
 
+    # resume stream precessing
+    pause_wake_event.clear()
+
 def process_audio_stream():
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
     try:
         while not stop_event.is_set():
-            audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
-            prediction = oww.predict(audio_chunk)
-            
-            if prediction[0] > 0.5:  # Adjust threshold as needed
-                print("triggered!!!!")
-                # sio.emit('wake_word_detected')
+            if not pause_wake_event.is_set():
+                audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
+                prediction = oww.predict(audio_chunk)
+                
+                if prediction['alexa'] > 0.5:  # Adjust threshold as needed
+                    print("triggered!!!!")
+                    sio.emit('wake_word_detected')
+                    time.sleep(3)
+            else:
+                time.sleep(0.1)
     finally:
         stream.stop_stream()
         stream.close()
@@ -209,5 +220,6 @@ if __name__ == "__main__":
         sio.wait()
     finally:
         stop_event.set()
+        pause_wake_event.clear()
         audio_thread.join()
         print("Cleanup complete")
