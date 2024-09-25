@@ -39,8 +39,8 @@ sympy==1.12
 tflite-runtime==2.14.0
 threadpoolctl==3.5.0
 tokenizers==0.19.1
-torch==2.4.1+cpu
-torchaudio==2.4.1+cpu
+torch==2.4.1
+torchaudio==2.4.1
 tqdm==4.66.5
 transformers==4.44.2
 typing-extensions==4.9.0

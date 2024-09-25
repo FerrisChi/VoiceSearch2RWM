@@ -18,21 +18,14 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
-# detect and set device
-# if torch.backends.mps.is_available():
-#     device = torch.device('mps')
-# elif torch.cuda.is_available():
-#     device = torch.device('cuda')
-# else:
-#     device = torch.device('cpu')
-device = torch.device('cpu')
 
-Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper", device=device)
-AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper").to(device)
-TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers").to(device)
+Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper", clean_up_tokenization_spaces=True)
+AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper")
+# AudioModel.config.forced_decoder_ids = Processor.get_decoder_prompt_ids(language="english", task="transcribe")
+TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers")
 
-AudioModel.eval()
-TextModel.eval()
+# AudioModel.eval()
+# TextModel.eval()
 
 sio = socketio.Client()
 
@@ -67,7 +60,7 @@ def load_and_process_tags(file_path):
             
     print("All tags", TAG_TEXTS)
     global TAG_TENSOR
-    TAG_TENSOR = TextModel.encode(TAG_TEXTS, device=device, convert_to_tensor=True)
+    TAG_TENSOR = TextModel.encode(TAG_TEXTS, convert_to_tensor=True)
 
 def process_audio(audio_path="example_audio.wav"):
     if audio_path.endswith(".webm"):
@@ -82,10 +75,13 @@ def process_audio(audio_path="example_audio.wav"):
         audio_input, sampling_rate = sf.read(audio_path)
 
     tim = time.time()
+
+    audio_size_mb = sys.getsizeof(audio_input) / (1024 * 1024)
+    print(f"Size of audio_input: {audio_size_mb:.2f} MB")
+    
     input_features = Processor(
         audio_input, sampling_rate=sampling_rate, return_tensors="pt"
-    ).input_features.to(device)
-
+    ).input_features
     predicted_ids = AudioModel.generate(input_features)
     transcription = Processor.batch_decode(predicted_ids, skip_special_tokens=True)
 
@@ -96,7 +92,7 @@ def process_audio(audio_path="example_audio.wav"):
 
 def find_and_rank_top_videos(sentence, similarity_threshold=0.3, max_videos=10):
     tim = time.time()
-    sentence_vector = TextModel.encode(sentence, convert_to_tensor=True, device=device)
+    sentence_vector = TextModel.encode(sentence, convert_to_tensor=True)
     similarities = util.cos_sim(sentence_vector, TAG_TENSOR)[0]
     
     # Sort indices by similarity in descending order
