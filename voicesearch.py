@@ -172,10 +172,10 @@ def process_audio_stream():
 
     try:
         while not stop_event.is_set():
+            audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
+            # keep receiving chunks but not process when paused
             if not pause_wake_event.is_set():
-                audio_chunk = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
                 prediction = oww.predict(audio_chunk)
-                
                 if prediction['alexa'] > 0.5 and time.time() - last_wake_time > wake_cooldown:  # Adjust threshold as needed
                     print("triggered!!!!")
                     sio.emit('voice search start', {'chatroom': 'voice search'})
