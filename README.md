@@ -1,18 +1,14 @@
 # VoiceSearch2RWM
 
-## Run with Venv 
+## Run with Venv (Linux)
 
-* python 3.12 is needed in MacOS and python 3.8 in Linux
+* python 3.8 in Linux
 
 1. Make sure `portaudio ffmpeg libsndfile` are installed in the system.
    * In linux:
      * `apt-get update`
      * `apt-get upgrade`
      * `apt-get install portaudio19-dev ffmpeg libsndfile1`
-   * In MacOS:
-     * `brew update && brew upgrade && brew cleanup`
-     * `brew install portaudio ffmpeg libsndfile`
-
 2. Creat a virtual environment
    * `python -m venv vsenv`
    * `source vsenv/bin/activate`
@@ -31,6 +27,8 @@
    * See loggings:
      `tail -f developer/VoiceSearch2RWM/voice_search.log`.
 
+5. Add voice search service to startup management
+   * Execute `voicesearch.sh`.
 
 
 ## Run with Docker (Deprecated)
