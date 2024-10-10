@@ -28,6 +28,8 @@
    * Make sure the centivizerWeb is checked to `jjc_voicesearch` branch and server is up.
    * `python voicesearch.py --url http://127.0.0.1:3000 --data_path /home/odyssey/developer/VoiceSearch2RWM/data --tmp_path /home/odyssey/developer/centivizerWeb/tmp/voice-search`
    * Trigger the voice search by saying "Alexa".
+   * See loggings:
+     `tail -f developer/VoiceSearch2RWM/voice_search.log`.
 
 
 
