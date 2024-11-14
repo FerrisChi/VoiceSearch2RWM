@@ -1,3 +1,5 @@
+vsenv/
+
 # Ignore compiled files
 *.class
 *.o
