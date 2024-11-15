@@ -14,11 +14,13 @@
    * `source vsenv/bin/activate`
 
 3. Install Python packages
-   * `pip install -r requirements-<amd64|arm64>.txt`
+   * `pip install networkx==3.0 torch==2.4.1+cpu torchaudio==2.4.1+cpu --index-url https://download.pytorch.org/whl/cpu`
+   * `pip install -r requirements.txt`
+   * Open a new terminal before running the service.
    * If failed, try install them manually and freeze version for later use.
      * `pip install networkx==3.0 torch torchaudio --index-url=https://download.pytorch.org/whl/cpu`
      * `pip install "transformers[torch]" sentence-transformers "python-socketio<5" soundfile pydub openwakeword pyaudio`
-     * `pip freeze > requirements.txt`
+     * `pip freeze > requirements_correct.txt`
 
 4. Run voice search service
    * Make sure the centivizerWeb is checked to `jjc_voicesearch` branch and server is up.
