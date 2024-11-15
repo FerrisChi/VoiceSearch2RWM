@@ -4,6 +4,7 @@ import os
 import io
 import sys
 import signal
+from typing import List
 from pydub import AudioSegment
 import soundfile as sf
 import socketio
@@ -19,10 +20,10 @@ from sentence_transformers import SentenceTransformer, util
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
 
-Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper", clean_up_tokenization_spaces=True)
-AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny.en", cache_dir="pretrained_models/whisper")
-# AudioModel.config.forced_decoder_ids = Processor.get_decoder_prompt_ids(language="english", task="transcribe")
-TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers")
+Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper", clean_up_tokenization_spaces=True)
+AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper")
+# TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers")
+TextModel = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', cache_folder="pretrained_models/sentence-transformers")
 
 # AudioModel.eval()
 # TextModel.eval()
@@ -48,7 +49,8 @@ RATE = 16000
 stop_event = Event()
 pause_wake_event = Event()
 
-def load_and_process_tags(file_path):
+# Load inverted index from CSV file
+def load_and_process_tags(file_path: str):
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -62,7 +64,8 @@ def load_and_process_tags(file_path):
     global TAG_TENSOR
     TAG_TENSOR = TextModel.encode(TAG_TEXTS, convert_to_tensor=True)
 
-def process_audio(audio_path="example_audio.wav"):
+# Process audio and get transcription
+def process_audio(audio_path: str ="example_audio.wav", lang: str = "english") -> str:
     if audio_path.endswith(".webm"):
         audio = AudioSegment.from_file(audio_path, format="webm")
         audio = audio.set_frame_rate(16000)
@@ -82,7 +85,9 @@ def process_audio(audio_path="example_audio.wav"):
     input_features = Processor(
         audio_input, sampling_rate=sampling_rate, return_tensors="pt"
     ).input_features
-    predicted_ids = AudioModel.generate(input_features)
+
+    forced_bos_token_id = Processor.get_decoder_prompt_ids(language=lang, task="transcribe")
+    predicted_ids = AudioModel.generate(input_features, forced_bos_token_id=forced_bos_token_id)
     transcription = Processor.batch_decode(predicted_ids, skip_special_tokens=True)
 
     tim = time.time() - tim
@@ -90,7 +95,7 @@ def process_audio(audio_path="example_audio.wav"):
     print(transcription[0])
     return transcription[0]
 
-def find_and_rank_top_videos(sentence, similarity_threshold=0.3, max_videos=10):
+def find_and_rank_top_videos(sentence: str, similarity_threshold: float = 0.3, max_videos: int = 10) -> List[str]:
     tim = time.time()
     sentence_vector = TextModel.encode(sentence, convert_to_tensor=True)
     similarities = util.cos_sim(sentence_vector, TAG_TENSOR)[0]
@@ -149,9 +154,11 @@ def handle_voice_search(data):
 
     print('Voice search process received', data)
     file_name = data['fileName']
+    lang = data.get('lang', 'japanese')
+
     file_path = os.path.join(TMP_PATH, file_name)
 
-    text = process_audio(file_path)
+    text = process_audio(file_path, lang)
 
     top_k_video_ids = find_and_rank_top_videos(text)
 
