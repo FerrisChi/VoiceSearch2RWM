@@ -69,21 +69,31 @@ def record_audio(output_path):
     wf.close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Record audio and get transcription')
-    parser.add_argument('--output', type=str, default="recorded_audio_en.wav", help='Output file path for the recorded audio')
+    parser = argparse.ArgumentParser(description='Record audio and test voice search')
+    parser.add_argument('--path', type=str, default="example_audio_en.wav", help='File path for the recorded audio')
     args = parser.parse_args()
 
     load_and_process_tags('data/inverted-index.csv')
     
-    output_path = args.output
-    record_audio(output_path)
+    output_path = args.path
+    # record_audio(output_path)
 
+    # Uncomment the following lines to verify the webm file
     # file_path = "/home/odyssey/developer/centivizerWeb/tmp/voice-search/audio_1727233600175.webm"
     # is_valid = verify_webm_file(file_path)
     
-    transcription = process_audio(output_path, 'english')
-    # translate_to_english(transcription)
-    # transcription = "水辺のビーチに行きたい"
+    lang = output_path.split('.')[0].split('_')[-1]
+    if lang == 'en':
+        lang = 'english'
+    elif lang == 'ja':
+        lang = 'japanese'
+    elif lang == 'fr':
+        lang = 'french'
+    else:
+        raise ValueError(f"Add {lang} symbol to the language mapping.")
+
+    transcription = process_audio(output_path, lang)
 
     resutls = find_and_rank_top_videos(transcription)
+    
     print(resutls)
