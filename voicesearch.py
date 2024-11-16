@@ -153,9 +153,16 @@ def handle_voice_search(data):
     pause_wake_event.set()
 
     print('Voice search process received', data)
-    file_name = data['fileName']
-    lang = data.get('lang', 'japanese')
 
+    lang = data.get('lang', None)
+    if lang == 'ja' or lang == 'japanese':
+        lang = 'japanese'
+    elif lang == 'fr' or lang == 'french':
+        lang = 'french'
+    else:
+        lang = 'english'
+
+    file_name = data['fileName']
     file_path = os.path.join(TMP_PATH, file_name)
 
     text = process_audio(file_path, lang)

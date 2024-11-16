@@ -14,7 +14,7 @@ CHUNK = 1600
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
-RECORD_SECONDS = 10
+RECORD_SECONDS = 7
 
 # verify the webm file
 def verify_webm_file(file_path):
@@ -46,9 +46,9 @@ def verify_webm_file(file_path):
 
 def record_audio(output_path):
     p = pyaudio.PyAudio()
+    input("Press Enter to start recording...")
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
-    print("Recording...")
     frames = []
     
     for _ in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
@@ -70,20 +70,20 @@ def record_audio(output_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Record audio and get transcription')
-    parser.add_argument('--output', type=str, default="recorded_audio_ja.wav", help='Output file path for the recorded audio')
+    parser.add_argument('--output', type=str, default="recorded_audio_en.wav", help='Output file path for the recorded audio')
     args = parser.parse_args()
 
     load_and_process_tags('data/inverted-index.csv')
     
     output_path = args.output
-    # record_audio(output_path)
+    record_audio(output_path)
 
     # file_path = "/home/odyssey/developer/centivizerWeb/tmp/voice-search/audio_1727233600175.webm"
     # is_valid = verify_webm_file(file_path)
     
-    # transcription = process_audio(output_path, 'japanese')
+    transcription = process_audio(output_path, 'english')
     # translate_to_english(transcription)
-    transcription = "水辺のビーチに行きたい"
+    # transcription = "水辺のビーチに行きたい"
 
     resutls = find_and_rank_top_videos(transcription)
     print(resutls)
