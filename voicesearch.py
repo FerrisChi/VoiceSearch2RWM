@@ -1,29 +1,34 @@
 import csv
 import time
 import os
-import io
+# import io
 import sys
 import signal
 from typing import List
-from pydub import AudioSegment
-import soundfile as sf
+# from pydub import AudioSegment
+# import soundfile as sf
 import socketio
 import string
-import torch
+# import torch
 import argparse
 from threading import Thread, Event
 import pyaudio
 import openwakeword
 import numpy as np
 
+from faster_whisper import WhisperModel
+
 from sentence_transformers import SentenceTransformer, util
-from transformers import WhisperProcessor, WhisperForConditionalGeneration
+# from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
-
-Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper", clean_up_tokenization_spaces=True)
-AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper")
+MODEL_PATH = "pretrained_models"
+# Processor = WhisperProcessor.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper", clean_up_tokenization_spaces=True)
+# AudioModel = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny", cache_dir="pretrained_models/whisper")
 # TextModel = SentenceTransformer('all-MiniLM-L6-v2', cache_folder="pretrained_models/sentence-transformers")
-TextModel = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', cache_folder="pretrained_models/sentence-transformers")
+TextModel = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', cache_folder=f"{MODEL_PATH}/sentence-transformers")
+
+model_size = "base"
+AudioModel = WhisperModel(model_size, download_root=MODEL_PATH, device="cpu", compute_type="int8")
 
 # AudioModel.eval()
 # TextModel.eval()
@@ -34,10 +39,10 @@ INVERTED_INDEX = {}
 TAG_TEXTS = []
 TAG_TENSOR = None
 
-openwakeword.utils.download_models(['alexa'])
-
+WAKE_NAME = "alexa"
+openwakeword.utils.download_models([WAKE_NAME])
 oww = openwakeword.Model(
-    wakeword_models=["alexa"]
+    wakeword_models=[WAKE_NAME]
 )
 
 # Audio stream parameters
@@ -65,35 +70,50 @@ def load_and_process_tags(file_path: str):
     TAG_TENSOR = TextModel.encode(TAG_TEXTS, convert_to_tensor=True)
 
 # Process audio and get transcription
-def process_audio(audio_path: str ="example_audio.wav", lang: str = "english") -> str:
-    if audio_path.endswith(".webm"):
-        audio = AudioSegment.from_file(audio_path, format="webm")
-        audio = audio.set_frame_rate(16000)
-
-        buffer = io.BytesIO()
-        audio.export(buffer, format="wav")
-        buffer.seek(0)
-        audio_input, sampling_rate = sf.read(buffer)
-    else:
-        audio_input, sampling_rate = sf.read(audio_path)
-
+def process_audio_fast(audio_path: str ="example_audio.wav", lang_code: str = "en") -> str:
     tim = time.time()
 
-    audio_size_mb = sys.getsizeof(audio_input) / (1024 * 1024)
-    print(f"Size of audio_input: {audio_size_mb:.2f} MB")
-    
-    input_features = Processor(
-        audio_input, sampling_rate=sampling_rate, return_tensors="pt"
-    ).input_features
-
-    forced_bos_token_id = Processor.get_decoder_prompt_ids(language=lang, task="transcribe")
-    predicted_ids = AudioModel.generate(input_features, forced_bos_token_id=forced_bos_token_id)
-    transcription = Processor.batch_decode(predicted_ids, skip_special_tokens=True)
+    segments, info = AudioModel.transcribe(audio_path, beam_size=5, language=lang_code, task='transcribe', word_timestamps=False)
+    segments = list(segments)
 
     tim = time.time() - tim
+    transcription = " ".join(segment.text for segment in segments)
+    print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
     print('Audio Processing Time: {:.5f}'.format(tim))
-    print(transcription[0])
-    return transcription[0]
+    print(transcription)
+    return transcription
+
+
+# Process audio and get transcription
+# def process_audio(audio_path: str ="example_audio.wav", lang: str = "english") -> str:
+#     if audio_path.endswith(".webm"):
+#         audio = AudioSegment.from_file(audio_path, format="webm")
+#         audio = audio.set_frame_rate(16000)
+
+#         buffer = io.BytesIO()
+#         audio.export(buffer, format="wav")
+#         buffer.seek(0)
+#         audio_input, sampling_rate = sf.read(buffer)
+#     else:
+#         audio_input, sampling_rate = sf.read(audio_path)
+
+#     tim = time.time()
+
+#     audio_size_mb = sys.getsizeof(audio_input) / (1024 * 1024)
+#     # print(f"Size of audio_input: {audio_size_mb:.2f} MB")
+    
+#     input_features = Processor(
+#         audio_input, sampling_rate=sampling_rate, return_tensors="pt"
+#     ).input_features
+
+#     forced_bos_token_id = Processor.get_decoder_prompt_ids(language=lang, task="transcribe")
+#     predicted_ids = AudioModel.generate(input_features, forced_bos_token_id=forced_bos_token_id)
+#     transcription = Processor.batch_decode(predicted_ids, skip_special_tokens=True)
+
+#     tim = time.time() - tim
+#     print('Audio Processing Time: {:.5f}'.format(tim))
+#     print(transcription[0])
+#     return transcription[0]
 
 def find_and_rank_top_videos(sentence: str, similarity_threshold: float = 0.3, max_videos: int = 10) -> List[str]:
     tim = time.time()
@@ -101,7 +121,8 @@ def find_and_rank_top_videos(sentence: str, similarity_threshold: float = 0.3, m
     similarities = util.cos_sim(sentence_vector, TAG_TENSOR)[0]
     
     # Sort indices by similarity in descending order
-    sorted_indices = torch.argsort(similarities, descending=True)
+    # sorted_indices = torch.argsort(similarities, descending=True)
+    sorted_indices = np.argsort(-similarities.numpy())
     
     top_tags = []
     video_scores = {}
@@ -154,18 +175,18 @@ def handle_voice_search(data):
 
     print('Voice search process received', data)
 
-    lang = data.get('lang', None)
-    if lang == 'ja' or lang == 'japanese':
-        lang = 'japanese'
-    elif lang == 'fr' or lang == 'french':
-        lang = 'french'
-    else:
-        lang = 'english'
+    lang = data.get('lang', 'en')
+    # if lang == 'ja' or lang == 'japanese':
+    #     lang = 'japanese'
+    # elif lang == 'fr' or lang == 'french':
+    #     lang = 'french'
+    # else:
+    #     lang = 'english'
 
     file_name = data['fileName']
     file_path = os.path.join(TMP_PATH, file_name)
 
-    text = process_audio(file_path, lang)
+    text = process_audio_fast(file_path, lang)
 
     top_k_video_ids = find_and_rank_top_videos(text)
 
@@ -186,7 +207,8 @@ def process_audio_stream():
             # keep receiving chunks but not process when paused
             if not pause_wake_event.is_set():
                 prediction = oww.predict(audio_chunk)
-                if prediction['alexa'] > 0.5 and time.time() - last_wake_time > wake_cooldown:  # Adjust threshold as needed
+                # print(prediction)
+                if prediction[WAKE_NAME] > 0.5 and time.time() - last_wake_time > wake_cooldown:  # Adjust threshold as needed
                     print("triggered!!!!")
                     sio.emit('voice search start', {'chatroom': 'voice search'})
                     last_wake_time = time.time()
@@ -229,6 +251,7 @@ if __name__ == "__main__":
     # Start audio processing in a separate thread
     audio_thread = Thread(target=process_audio_stream)
     audio_thread.start()
+    print("Audio processing thread started")
 
     try:
         sio.wait()

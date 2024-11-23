@@ -7,7 +7,8 @@ import os
 import subprocess
 from pydub import AudioSegment
 
-from voicesearch import process_audio, find_and_rank_top_videos, load_and_process_tags
+from voicesearch import process_audio, find_and_rank_top_videos, load_and_process_tags, process_audio_fast
+import re
 
 # Audio stream parameters
 CHUNK = 1600
@@ -70,10 +71,10 @@ def record_audio(output_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Record audio and test voice search')
-    parser.add_argument('--path', type=str, default="example_audio_en.wav", help='File path for the recorded audio')
+    parser.add_argument('--path', type=str, default="/home/odyssey/developer/VoiceSearch2RWM/test/15/ja/beach.wav", help='File path for the recorded audio')
     args = parser.parse_args()
 
-    load_and_process_tags('data/inverted-index.csv')
+    # load_and_process_tags('data/inverted-index.csv')
     
     output_path = args.path
     # record_audio(output_path)
@@ -82,17 +83,21 @@ if __name__ == "__main__":
     # file_path = "/home/odyssey/developer/centivizerWeb/tmp/voice-search/audio_1727233600175.webm"
     # is_valid = verify_webm_file(file_path)
     
-    lang = output_path.split('.')[0].split('_')[-1]
-    if lang == 'en':
+    lang_code = output_path.split('.')[0].split('_')[-1]
+    if re.search(r'(?<![a-zA-Z])en(?![a-zA-Z])', output_path):
+        lang_code = 'en'
         lang = 'english'
-    elif lang == 'ja':
+    elif re.search(r'(?<![a-zA-Z])ja(?![a-zA-Z])', output_path):
+        lang_code = 'ja'
         lang = 'japanese'
-    elif lang == 'fr':
+    elif re.search(r'(?<![a-zA-Z])fr(?![a-zA-Z])', output_path):
+        lang_code = 'fr'
         lang = 'french'
     else:
-        raise ValueError(f"Add {lang} symbol to the language mapping.")
+        raise ValueError(f"Add {lang_code} symbol to the language mapping.")
 
-    transcription = process_audio(output_path, lang)
+    transcription = process_audio_fast(output_path, lang_code)
+    # transcription = process_audio(output_path, lang)
 
     resutls = find_and_rank_top_videos(transcription)
     

@@ -8,11 +8,11 @@
 * x86-64
 
 ### Installation instruction
-1. Make sure `portaudio ffmpeg libsndfile` are installed in the system.
+1. Make sure `portaudio libsndfile python3` are installed in the system.
    * In linux:
      * `apt-get update`
      * `apt-get upgrade`
-     * `apt-get install portaudio19-dev ffmpeg libsndfile1`
+     * `apt-get install portaudio19-dev ffmpeg libsndfile1 python3-dev`
 
 2. Creat a virtual environment
    * `python -m venv vsenv`
