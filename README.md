@@ -64,6 +64,11 @@
      Top relevant tags: ['beach', 'waterfront']
      ```
 
+## Update inverted index
+
+1. Export video inventory csv from google drive in `data/video_inventory`
+2. Back up old `inverted-index` if you want.
+3. Under `data/`, execute `python process.py`
 
 ## Test on docker in MacOS (Deprecated)
 
