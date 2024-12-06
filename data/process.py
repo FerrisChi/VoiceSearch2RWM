@@ -18,7 +18,8 @@ with open(input_file, mode='r', newline='', encoding='utf-8') as csvfile:
         # print(features)
         # input()
         for feature in features:
-            reverse_index[feature.strip()].append(video_name)
+            feature = feature.strip().lower()
+            reverse_index[feature].append(video_name)
 
 # Write the reverse index to the output CSV file
 with open(output_file, mode='w', newline='', encoding='utf-8') as csvfile:
