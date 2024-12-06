@@ -115,7 +115,7 @@ def process_audio_fast(audio_path: str ="example_audio.wav", lang_code: str = "e
 #     print(transcription[0])
 #     return transcription[0]
 
-def find_and_rank_top_videos(sentence: str, similarity_threshold: float = 0.3, max_videos: int = 10) -> List[str]:
+def find_and_rank_top_videos(sentence: str, similarity_threshold: float = 0.3, max_videos: int = 30) -> List[str]:
     tim = time.time()
     sentence_vector = TextModel.encode(sentence, convert_to_tensor=True)
     similarities = util.cos_sim(sentence_vector, TAG_TENSOR)[0]
